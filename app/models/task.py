@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from uuid import UUID
 from enum import Enum
@@ -105,18 +105,18 @@ class TaskStatusResponse(BaseModel):
     """Response model for task status polling"""
     task_id: UUID
     status: TaskStatus
-    video_url: Optional[str] = Field(None, description="Public URL of processed video (if completed)")
-    error: Optional[str] = Field(None, description="Error message (if failed)")
-    created_at: datetime
-    updated_at: datetime
-    completed_at: Optional[datetime] = None
+    video_url: Union[str, None] = Field(default=None, description="Public URL of processed video (if completed)")
+    error: Union[str, None] = Field(default=None, description="Error message (if failed)")
+    created_at: Union[datetime, None] = Field(default=None, description="Task creation timestamp")
+    updated_at: Union[datetime, None] = Field(default=None, description="Last update timestamp")
+    completed_at: Union[datetime, None] = Field(default=None, description="Task completion timestamp")
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "task_id": "550e8400-e29b-41d4-a716-446655440000",
                 "status": "success",
-                "video_url": "https://your-app.railway.app/video/550e8400-e29b-41d4-a716-446655440000_captioned.mp4",
+                "video_url": "https://confident-laughter-production-aec0.up.railway.app/video/550e8400-e29b-41d4-a716-446655440000_captioned.mp4",
                 "error": None,
                 "created_at": "2025-10-07T12:00:00Z",
                 "updated_at": "2025-10-07T12:05:00Z",
