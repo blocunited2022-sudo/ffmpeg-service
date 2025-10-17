@@ -288,8 +288,8 @@ async def get_task_status(task_id: UUID):
             status=TaskStatus(task_data["status"]),
             video_url=task_data.get("result_video_url"),
             error=task_data.get("error_message"),
-            created_at=task_data["created_at"],
-            updated_at=task_data["updated_at"],
+            created_at=task_data.get("created_at"),
+            updated_at=task_data.get("updated_at"),
             completed_at=task_data.get("completed_at")
         )
 
