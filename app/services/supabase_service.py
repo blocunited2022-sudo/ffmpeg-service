@@ -102,7 +102,15 @@ class SupabaseService:
 
             if result.data:
                 logger.info(f"Task {task_id} retrieved successfully")
-                return result.data
+                # Ensure datetime fields are present even if None
+                task_data = result.data
+                if 'created_at' not in task_data:
+                    task_data['created_at'] = None
+                if 'updated_at' not in task_data:
+                    task_data['updated_at'] = None
+                if 'completed_at' not in task_data:
+                    task_data['completed_at'] = None
+                return task_data
             logger.warning(f"Task {task_id} not found in database")
             return None
         except Exception as e:
@@ -131,7 +139,10 @@ class SupabaseService:
             True if updated successfully
         """
         try:
-            update_data: Dict[str, Any] = {"status": status.value}
+            update_data: Dict[str, Any] = {
+                "status": status.value,
+                "updated_at": datetime.utcnow().isoformat()  # Always update this timestamp
+            }
 
             if result_video_url:
                 update_data["result_video_url"] = result_video_url
