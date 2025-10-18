@@ -165,7 +165,6 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
     primary_color = hex_to_ass_color(settings.get("primary-color", "#FFFFFF"))
     highlight_color = hex_to_ass_color(settings.get("highlight-color", "#FFFF00"))
     outline_color = hex_to_ass_color(settings.get("outline-color", "#000000"))
-    shadow_color = hex_to_ass_color(settings.get("shadow-color", "#000000"))
     
     # Log the settings being used
     logger.info(f"ASS Generation Settings: font-size={settings.get('font-size')}, "
@@ -174,8 +173,8 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
                 f"y={settings.get('y')}, "
                 f"highlight-position={settings.get('highlight-position')}")
     
-    # ASS header with styling - BorderStyle=1 for outline only (no background box)
-    # BackColour with alpha &H00000000 means fully transparent (no black box)
+    # ASS header - BorderStyle=3 for outline only (NO opaque box)
+    # BackColour fully transparent, BorderStyle=3 ensures no background box
     ass_content = f"""[Script Info]
 Title: Subtitles
 ScriptType: v4.00+
@@ -186,7 +185,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H00000000,{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,1,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},5,40,40,{settings.get('y', 960)},1
+Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H00000000,{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,3,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},2,40,40,{settings.get('y', 960)},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -253,12 +252,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: dict = None) -> None:
     """
     Burn subtitles into video using FFmpeg with custom styling
-    
-    IMPORTANT: This function expects srt_text to already contain ASS or SRT formatted content.
-    If you want ASS styling with custom settings, you must:
-    1. Generate ASS content using write_ass(segments, max_words_per_line, settings)
-    2. Pass that ASS content as srt_text parameter
-    3. Pass the same settings dict to this function
     
     Args:
         video_path: Path to input video
