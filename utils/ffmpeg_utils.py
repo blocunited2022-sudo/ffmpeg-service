@@ -77,6 +77,23 @@ def format_time(seconds: float) -> str:
     return f"{int(hours):02}:{int(minutes):02}:{int(secs):02},{milliseconds:03}"
 
 
+def format_time_ass(seconds: float) -> str:
+    """
+    Format time in seconds to ASS timestamp format (H:MM:SS.CC)
+
+    Args:
+        seconds: Time in seconds
+
+    Returns:
+        Formatted timestamp string for ASS
+    """
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    cs = int((seconds - int(seconds)) * 100)
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+
 def write_srt(subtitles, max_words_per_line: int = 3) -> str:
     """
     Convert Whisper segments to SRT format with word limiting
@@ -112,12 +129,125 @@ def write_srt(subtitles, max_words_per_line: int = 3) -> str:
     return "\n".join(srt_output)
 
 
+def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> str:
+    """
+    Convert Whisper segments to ASS format with highlighted word styling
+    
+    Args:
+        subtitles: List of subtitle segments from Whisper
+        max_words_per_line: Maximum words per subtitle line
+        settings: Caption styling settings
+        
+    Returns:
+        ASS formatted string
+    """
+    if settings is None:
+        settings = {
+            "font-size": 32,
+            "primary-color": "#FFFFFF",
+            "highlight-color": "#FFFF00",
+            "outline-color": "#000000",
+            "shadow-color": "#000000",
+            "outline-width": 3,
+            "shadow-offset": 2,
+            "y": 960,
+            "font-family": "Arial Black",
+            "bold": True,
+            "highlight-position": "last"
+        }
+    
+    def hex_to_ass_color(hex_color, alpha="00"):
+        """Convert #RRGGBB to &HAABBGGRR (ASS format)"""
+        hex_color = hex_color.lstrip('#')
+        r, g, b = hex_color[0:2], hex_color[2:4], hex_color[4:6]
+        return f"&H{alpha}{b}{g}{r}"
+    
+    primary_color = hex_to_ass_color(settings.get("primary-color", "#FFFFFF"))
+    highlight_color = hex_to_ass_color(settings.get("highlight-color", "#FFFF00"))
+    outline_color = hex_to_ass_color(settings.get("outline-color", "#000000"))
+    shadow_color = hex_to_ass_color(settings.get("shadow-color", "#000000"))
+    
+    # ASS header with styling - BorderStyle=1 for outline+shadow (no background box)
+    ass_content = f"""[Script Info]
+Title: Subtitles
+ScriptType: v4.00+
+WrapStyle: 0
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},{shadow_color},{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,1,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},5,40,40,{settings.get('y', 960)},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    
+    # Process subtitles
+    for seg in subtitles:
+        start = seg["start"]
+        end = seg["end"]
+        text = seg["text"].strip().upper()  # Convert to uppercase
+        
+        # Split text into chunks
+        words = text.split()
+        duration = end - start
+        
+        if len(words) <= max_words_per_line:
+            chunks = [text]
+        else:
+            chunks = []
+            for i in range(0, len(words), max_words_per_line):
+                chunk = " ".join(words[i:i + max_words_per_line])
+                chunks.append(chunk)
+        
+        # Create dialogue entries with color formatting
+        chunk_duration = duration / len(chunks)
+        for idx, chunk in enumerate(chunks):
+            chunk_start = start + (idx * chunk_duration)
+            chunk_end = start + ((idx + 1) * chunk_duration)
+            
+            start_time = format_time_ass(chunk_start)
+            end_time = format_time_ass(chunk_end)
+            
+            # Apply styling to specified word
+            words_in_chunk = chunk.split()
+            highlight_pos = settings.get('highlight-position', 'last')
+            
+            if len(words_in_chunk) > 0:
+                formatted_words = []
+                
+                for word_idx, word in enumerate(words_in_chunk):
+                    # Determine if this word should be highlighted
+                    should_highlight = False
+                    if highlight_pos == "first" and word_idx == 0:
+                        should_highlight = True
+                    elif highlight_pos == "last" and word_idx == len(words_in_chunk) - 1:
+                        should_highlight = True
+                    elif isinstance(highlight_pos, int) and word_idx == highlight_pos:
+                        should_highlight = True
+                    
+                    if should_highlight:
+                        formatted_words.append(f"{{\\c{highlight_color}}}{word}{{\\c{primary_color}}}")
+                    else:
+                        formatted_words.append(word)
+                
+                formatted_text = " ".join(formatted_words)
+            else:
+                formatted_text = chunk
+            
+            ass_content += f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{formatted_text}\n"
+    
+    return ass_content
+
+
 def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: dict = None) -> None:
     """
     Burn subtitles into video using FFmpeg with custom styling
     Args:
         video_path: Path to input video
-        srt_text: SRT formatted subtitles
+        srt_text: SRT or ASS formatted subtitles
         output_path: Path for output video
         settings: Caption styling settings
     Raises:
@@ -126,88 +256,142 @@ def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: d
     # Default settings
     if settings is None:
         settings = {
-            "shadow-color": "#000000",
-            "max-words-per-line": 3,
-            "font-size": 10,
-            "shadow-offset": 0.3,
+            "font-size": 62,
+            "primary-color": "#FFFFFF",
+            "highlight-color": "#FFFF00",
             "outline-color": "#000000",
-            "word-color": "#FFFFFF",
-            "outline-width": 0.5,
-                "y": 50,  # vertical distance from bottom
-            "font-family": "Montserrat-Bold",
-            "bold": True
+            "shadow-color": "#000000",
+            "outline-width": 10,
+            "shadow-offset": 2,
+            "max-words-per-line": 3,
+            "y": 960,
+            "font-family": "Arial Black",
+            "bold": True,
+            "highlight-position": "last",
+            "use-ass": True  # Use ASS format for advanced styling
         }
     
-    srt_path = video_path.replace(".mp4", "_temp.srt")
-    try:
-        with open(srt_path, "w", encoding="utf-8") as srt_file:
-            srt_file.write(srt_text)
-        logger.info(f"Burning subtitles into video: {video_path}")
-        srt_path_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
-        
-        # Convert hex colors to ASS format (&H00BBGGRR)
-        def hex_to_ass_color(hex_color):
-            hex_color = hex_color.lstrip('#')
-            r, g, b = hex_color[0:2], hex_color[2:4], hex_color[4:6]
-            return f"&H00{b}{g}{r}"
-        
-        primary_color = hex_to_ass_color(settings["word-color"])
-        outline_color = hex_to_ass_color(settings["outline-color"])
-        shadow_color = hex_to_ass_color(settings["shadow-color"])
-        
-        # Build subtitle filter with custom styling
-        subtitle_filter = (
-            f"subtitles={srt_path_escaped}:force_style='"
-            f"FontName={settings['font-family']},"
-            f"FontSize={settings['font-size']},"
-            f"Bold=1,"
-            f"PrimaryColour={primary_color},"
-            f"OutlineColour={outline_color},"
-            f"BackColour={shadow_color},"
-            f"BorderStyle=1,"
-            f"Outline={settings['outline-width']},"
-            f"Shadow={settings['shadow-offset']},"
-            f"Alignment=2,"  # bottom centre
-            f"MarginV={int(settings['y'])}'" 
-        )
-        
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-threads", "0",
-            "-i", video_path,
-            "-vf", subtitle_filter,
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "23",
-            "-c:a", "copy",
-            output_path
-        ]
-        logger.info(f"Running FFmpeg subtitle burn command...")
-        logger.info(f"Subtitle filter: {subtitle_filter[:100]}...")
-        logger.info(f"Full command: {' '.join(cmd)}")
+    # Determine if we should use ASS format (for highlighted words)
+    use_ass = settings.get("use-ass", False) or settings.get("highlight-position") is not None
+    
+    if use_ass:
+        # Use ASS format for advanced styling
+        ass_path = video_path.replace(".mp4", "_temp.ass")
+        try:
+            with open(ass_path, "w", encoding="utf-8") as ass_file:
+                ass_file.write(srt_text)
+            
+            logger.info(f"Burning ASS subtitles into video: {video_path}")
+            ass_path_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
+            
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-threads", "0",
+                "-i", video_path,
+                "-vf", f"ass={ass_path_escaped}",
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "23",
+                "-c:a", "copy",
+                output_path
+            ]
+            
+            logger.info(f"Running FFmpeg ASS subtitle burn command...")
+            logger.info(f"Full command: {' '.join(cmd)}")
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-        logger.info(f"FFmpeg completed with return code: {result.returncode}")
-        logger.info(f"Subtitles burned successfully: {output_path}")
+            logger.info(f"FFmpeg completed with return code: {result.returncode}")
+            logger.info(f"ASS subtitles burned successfully: {output_path}")
 
-        if os.path.exists(output_path):
-            output_size = os.path.getsize(output_path) / (1024 * 1024)
-            logger.info(f"Output file size: {output_size:.2f}MB")
-        else:
-            logger.error(f"Output file does not exist: {output_path}")
+            if os.path.exists(output_path):
+                output_size = os.path.getsize(output_path) / (1024 * 1024)
+                logger.info(f"Output file size: {output_size:.2f}MB")
+            else:
+                logger.error(f"Output file does not exist: {output_path}")
 
-        if result.stderr:
-            logger.info(f"FFmpeg stderr output: {result.stderr[-1000:]}")
-        if result.stdout:
-            logger.info(f"FFmpeg stdout output: {result.stdout[-500:]}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"FFmpeg error: {e.stderr}")
-        raise
-    finally:
-        if os.path.exists(srt_path):
-            os.remove(srt_path)
+            if result.stderr:
+                logger.info(f"FFmpeg stderr output: {result.stderr[-1000:]}")
+                
+        except subprocess.CalledProcessError as e:
+            logger.error(f"FFmpeg error: {e.stderr}")
+            raise
+        finally:
+            if os.path.exists(ass_path):
+                os.remove(ass_path)
+    else:
+        # Use SRT format with force_style (legacy method)
+        srt_path = video_path.replace(".mp4", "_temp.srt")
+        try:
+            with open(srt_path, "w", encoding="utf-8") as srt_file:
+                srt_file.write(srt_text)
+            logger.info(f"Burning SRT subtitles into video: {video_path}")
+            srt_path_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
+            
+            # Convert hex colors to ASS format (&H00BBGGRR)
+            def hex_to_ass_color(hex_color):
+                hex_color = hex_color.lstrip('#')
+                r, g, b = hex_color[0:2], hex_color[2:4], hex_color[4:6]
+                return f"&H00{b}{g}{r}"
+            
+            primary_color = hex_to_ass_color(settings.get("primary-color", settings.get("word-color", "#FFFFFF")))
+            outline_color = hex_to_ass_color(settings.get("outline-color", "#000000"))
+            shadow_color = hex_to_ass_color(settings.get("shadow-color", "#000000"))
+            
+            # Build subtitle filter with custom styling
+            subtitle_filter = (
+                f"subtitles={srt_path_escaped}:force_style='"
+                f"FontName={settings.get('font-family', 'Montserrat-Bold')},"
+                f"FontSize={settings.get('font-size', 10)},"
+                f"Bold=1,"
+                f"PrimaryColour={primary_color},"
+                f"OutlineColour={outline_color},"
+                f"BackColour={shadow_color},"
+                f"BorderStyle=1,"
+                f"Outline={settings.get('outline-width', 0.5)},"
+                f"Shadow={settings.get('shadow-offset', 0.3)},"
+                f"Alignment=2,"
+                f"MarginV={int(settings.get('y', 50))}'"
+            )
+            
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-threads", "0",
+                "-i", video_path,
+                "-vf", subtitle_filter,
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "23",
+                "-c:a", "copy",
+                output_path
+            ]
+            logger.info(f"Running FFmpeg SRT subtitle burn command...")
+            logger.info(f"Subtitle filter: {subtitle_filter[:100]}...")
+            logger.info(f"Full command: {' '.join(cmd)}")
+
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+            logger.info(f"FFmpeg completed with return code: {result.returncode}")
+            logger.info(f"SRT subtitles burned successfully: {output_path}")
+
+            if os.path.exists(output_path):
+                output_size = os.path.getsize(output_path) / (1024 * 1024)
+                logger.info(f"Output file size: {output_size:.2f}MB")
+            else:
+                logger.error(f"Output file does not exist: {output_path}")
+
+            if result.stderr:
+                logger.info(f"FFmpeg stderr output: {result.stderr[-1000:]}")
+                
+        except subprocess.CalledProcessError as e:
+            logger.error(f"FFmpeg error: {e.stderr}")
+            raise
+        finally:
+            if os.path.exists(srt_path):
+                os.remove(srt_path)
+
 
 def merge_video_audio(
     video_path: str,
@@ -326,8 +510,8 @@ def add_background_music(
     video_path: str,
     music_path: str,
     output_path: str,
-    music_volume: float = 2.0,  # Changed default to 2.0 (200%)
-    video_volume: float = 1.0   # Changed default to 1.0 (100%)
+    music_volume: float = 2.0,
+    video_volume: float = 1.0
 ) -> None:
     """
     Add background music to a video
