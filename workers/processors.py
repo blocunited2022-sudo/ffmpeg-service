@@ -63,7 +63,7 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
         logger.info(f"[{task_id}] Status updated to RUNNING")
 
         video_url = task_data["video_url"]
-        model_size = task_data.get("model_size", "base")
+        model_size = task_data.get("model_size", "tiny")
         
         logger.info(f"[{task_id}] Using Whisper model size: {model_size}")
 
@@ -189,7 +189,6 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
 
     finally:
         cleanup_temp_files(video_path)
-
 
 async def process_merge_task(task_id: UUID, task_data: Dict[str, Any]) -> None:
     """
