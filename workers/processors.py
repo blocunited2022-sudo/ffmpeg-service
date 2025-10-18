@@ -110,15 +110,15 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
 
         # Define caption settings with the style you want
         caption_settings = {
-            "font-size": 62,
+            "font-size": 70,  # Larger for more boldness
             "primary-color": "#FFFFFF",
             "highlight-color": "#FFFF00",
             "outline-color": "#000000",
             "shadow-color": "#000000",
-            "outline-width": 10,
-            "shadow-offset": 2,
+            "outline-width": 12,  # Thicker outline for bolder look
+            "shadow-offset": 3,
             "max-words-per-line": 3,
-            "y": 1600,
+            "y": 1700,  # Pushed down more (higher value = lower on screen)
             "font-family": "Arial Black",
             "bold": True,
             "highlight-position": "last",
