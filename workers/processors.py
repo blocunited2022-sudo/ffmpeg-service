@@ -63,7 +63,7 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
         logger.info(f"[{task_id}] Status updated to RUNNING")
 
         video_url = task_data["video_url"]
-        model_size = "base"
+       model_size = task_data.get("model_size", "base")
 
         video_filename = f"{task_id}_input.mp4"
         video_path = os.path.join(tempfile.gettempdir(), video_filename)
