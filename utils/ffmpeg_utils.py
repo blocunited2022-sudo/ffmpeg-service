@@ -256,12 +256,12 @@ def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: d
     # Default settings
     if settings is None:
         settings = {
-            "font-size": 62,
+            "font-size": 32,
             "primary-color": "#FFFFFF",
             "highlight-color": "#FFFF00",
             "outline-color": "#000000",
             "shadow-color": "#000000",
-            "outline-width": 10,
+            "outline-width": 3,
             "shadow-offset": 2,
             "max-words-per-line": 3,
             "y": 960,
@@ -289,7 +289,7 @@ def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: d
                 "-y",
                 "-threads", "0",
                 "-i", video_path,
-                "-vf", f"ass={ass_path_escaped}",
+                "-vf", f"subtitles={ass_path_escaped}",  # Changed from 'ass' to 'subtitles'
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
                 "-crf", "23",
