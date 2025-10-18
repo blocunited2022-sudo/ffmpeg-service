@@ -173,8 +173,10 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
                 f"y={settings.get('y')}, "
                 f"highlight-position={settings.get('highlight-position')}")
     
-    # ASS header - BorderStyle=3 for outline only (NO opaque box)
-    # BackColour fully transparent, BorderStyle=3 ensures no background box
+    # ASS header - BorderStyle=1 with transparent BackColour
+    # MarginV controls bottom margin (distance from bottom of screen)
+    margin_from_bottom = 1920 - settings.get('y', 960)  # Calculate margin from bottom
+    
     ass_content = f"""[Script Info]
 Title: Subtitles
 ScriptType: v4.00+
@@ -185,7 +187,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H00000000,{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,3,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},2,40,40,{settings.get('y', 960)},1
+Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H80000000,{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,1,{settings.get('outline-width', 3)},0,2,10,10,{margin_from_bottom},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
