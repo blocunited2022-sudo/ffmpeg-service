@@ -63,7 +63,9 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
         logger.info(f"[{task_id}] Status updated to RUNNING")
 
         video_url = task_data["video_url"]
-       model_size = task_data.get("model_size", "base")
+        model_size = task_data.get("model_size", "base")
+        
+        logger.info(f"[{task_id}] Using Whisper model size: {model_size}")
 
         video_filename = f"{task_id}_input.mp4"
         video_path = os.path.join(tempfile.gettempdir(), video_filename)
@@ -82,6 +84,7 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
 
         loop = asyncio.get_event_loop()
         with ThreadPoolExecutor(max_workers=1) as executor:
+            # Load the model with the correct size
             model = await loop.run_in_executor(executor, _load_whisper_model, model_size)
             logger.info(f"[{task_id}] Model ready, starting transcription...")
             import time
