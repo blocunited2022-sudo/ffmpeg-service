@@ -167,6 +167,13 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
     outline_color = hex_to_ass_color(settings.get("outline-color", "#000000"))
     shadow_color = hex_to_ass_color(settings.get("shadow-color", "#000000"))
     
+    # Log the settings being used
+    logger.info(f"ASS Generation Settings: font-size={settings.get('font-size')}, "
+                f"font-family={settings.get('font-family')}, "
+                f"outline-width={settings.get('outline-width')}, "
+                f"y={settings.get('y')}, "
+                f"highlight-position={settings.get('highlight-position')}")
+    
     # ASS header with styling - BorderStyle=1 for outline+shadow (no background box)
     ass_content = f"""[Script Info]
 Title: Subtitles
@@ -245,11 +252,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: dict = None) -> None:
     """
     Burn subtitles into video using FFmpeg with custom styling
+    
+    IMPORTANT: This function expects srt_text to already contain ASS or SRT formatted content.
+    If you want ASS styling with custom settings, you must:
+    1. Generate ASS content using write_ass(segments, max_words_per_line, settings)
+    2. Pass that ASS content as srt_text parameter
+    3. Pass the same settings dict to this function
+    
     Args:
         video_path: Path to input video
-        srt_text: SRT or ASS formatted subtitles
+        srt_text: ASS or SRT formatted subtitles (already generated with proper styling)
         output_path: Path for output video
-        settings: Caption styling settings
+        settings: Caption styling settings (must match settings used in write_ass)
     Raises:
         subprocess.CalledProcessError: If FFmpeg fails
     """
@@ -268,8 +282,12 @@ def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: d
             "font-family": "Arial Black",
             "bold": True,
             "highlight-position": "last",
-            "use-ass": True  # Use ASS format for advanced styling
+            "use-ass": True
         }
+    
+    # Log the settings being applied
+    logger.info(f"Burn Subtitles Settings: use-ass={settings.get('use-ass')}, "
+                f"highlight-position={settings.get('highlight-position')}")
     
     # Determine if we should use ASS format (for highlighted words)
     use_ass = settings.get("use-ass", False) or settings.get("highlight-position") is not None
@@ -282,6 +300,13 @@ def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: d
                 ass_file.write(srt_text)
             
             logger.info(f"Burning ASS subtitles into video: {video_path}")
+            logger.info(f"ASS file saved at: {ass_path}")
+            
+            # Log first few lines of ASS file for debugging
+            with open(ass_path, "r", encoding="utf-8") as f:
+                first_lines = ''.join(f.readlines()[:15])
+                logger.info(f"ASS file preview:\n{first_lines}")
+            
             ass_path_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
             
             cmd = [
@@ -289,7 +314,7 @@ def burn_subtitles(video_path: str, srt_text: str, output_path: str, settings: d
                 "-y",
                 "-threads", "0",
                 "-i", video_path,
-                "-vf", f"subtitles={ass_path_escaped}",  # Changed from 'ass' to 'subtitles'
+                "-vf", f"subtitles={ass_path_escaped}",
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
                 "-crf", "23",
