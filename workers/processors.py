@@ -12,6 +12,7 @@ from app.config import settings
 from utils.file_utils import download_file, cleanup_temp_files, check_disk_space
 from utils.ffmpeg_utils import (
     write_srt,
+    write_ass,  # Added this import
     burn_subtitles,
     merge_video_audio,
     concat_videos,
@@ -107,18 +108,52 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
         else:
             logger.info(f"[{task_id}] First subtitle: {subtitles[0].get('text', 'N/A')[:100]}...")
 
-        logger.info(f"[{task_id}] Generating SRT subtitles")
-        srt_text = write_srt(subtitles, max_words_per_line=3)
-        logger.info(f"[{task_id}] SRT generation complete, length: {len(srt_text)} chars")
-        logger.info(f"[{task_id}] SRT preview: {srt_text[:200]}...")
+        # Define caption settings with the style you want
+        caption_settings = {
+            "font-size": 62,
+            "primary-color": "#FFFFFF",
+            "highlight-color": "#FFFF00",
+            "outline-color": "#000000",
+            "shadow-color": "#000000",
+            "outline-width": 10,
+            "shadow-offset": 2,
+            "max-words-per-line": 3,
+            "y": 1600,
+            "font-family": "Arial Black",
+            "bold": True,
+            "highlight-position": "last",
+            "use-ass": True
+        }
+
+        logger.info(f"[{task_id}] Generating ASS subtitles with custom styling")
+        logger.info(f"[{task_id}] Caption settings: {caption_settings}")
+        
+        # Generate ASS format with settings
+        ass_text = write_ass(
+            subtitles=subtitles,
+            max_words_per_line=caption_settings["max-words-per-line"],
+            settings=caption_settings
+        )
+        
+        logger.info(f"[{task_id}] ASS generation complete, length: {len(ass_text)} chars")
+        logger.info(f"[{task_id}] ASS preview: {ass_text[:200]}...")
 
         output_filename = f"{task_id}_captioned.mp4"
         output_path = os.path.join(settings.video_output_dir, output_filename)
 
         logger.info(f"[{task_id}] Burning subtitles into video using FFmpeg")
         logger.info(f"[{task_id}] Input: {video_path}, Output: {output_path}")
+        
+        # Burn subtitles with the same settings
         with ThreadPoolExecutor() as burn_executor:
-            await loop.run_in_executor(burn_executor, burn_subtitles, video_path, srt_text, output_path)
+            await loop.run_in_executor(
+                burn_executor,
+                burn_subtitles,
+                video_path,
+                ass_text,
+                output_path,
+                caption_settings  # Pass settings to burn_subtitles
+            )
         logger.info(f"[{task_id}] Subtitle burning complete")
 
         if os.path.exists(output_path):
