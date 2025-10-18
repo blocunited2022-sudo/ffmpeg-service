@@ -174,7 +174,8 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
                 f"y={settings.get('y')}, "
                 f"highlight-position={settings.get('highlight-position')}")
     
-    # ASS header with styling - BorderStyle=1 for outline+shadow (no background box)
+    # ASS header with styling - BorderStyle=1 for outline only (no background box)
+    # BackColour with alpha &H00000000 means fully transparent (no black box)
     ass_content = f"""[Script Info]
 Title: Subtitles
 ScriptType: v4.00+
@@ -185,7 +186,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},{shadow_color},{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,1,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},5,40,40,{settings.get('y', 960)},1
+Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H00000000,{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,1,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},5,40,40,{settings.get('y', 960)},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
