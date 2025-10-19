@@ -113,7 +113,7 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
 
         # Define caption settings - BOLD, NO BLACK BOX, POSITIONED LOWER
         caption_settings = {
-            "font-size": 76,              # Large size
+            "font-size": 100,              # Large size
             "primary-color": "#FFFFFF",    # White text
             "highlight-color": "#FFFF00",  # Yellow highlight
             "outline-color": "#000000",    # Black outline
