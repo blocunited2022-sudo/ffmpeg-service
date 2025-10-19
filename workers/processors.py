@@ -111,19 +111,22 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
         else:
             logger.info(f"[{task_id}] First subtitle: {subtitles[0].get('text', 'N/A')[:100]}...")
 
-        # Define caption settings - BOLD, NO BLACK BOX, POSITIONED LOWER
+        # Define caption settings - BOLD & FAT text, NO BLACK BOX
         caption_settings = {
             "font-size": 100,              # Large size
             "primary-color": "#FFFFFF",    # White text
             "highlight-color": "#FFFF00",  # Yellow highlight
             "outline-color": "#000000",    # Black outline
             "shadow-color": "#000000",     # Black shadow
-            "outline-width": 2,           # Thick outline for bold look
-            "shadow-offset": 2,            # No shadow to avoid black box
+            "outline-width": 4,            # Reduced outline to prevent black box
+            "shadow-offset": 2,            # Adds depth without box
             "max-words-per-line": 3,       # 3 words max per line
             "y": 1550,                     # Position (distance from top, 370 from bottom)
-            "font-family": "Arial Black",  # Bold font
+            "font-family": "Impact",       # Impact is MUCH bolder than Arial Black
             "bold": True,                  # Bold enabled
+            "scale-x": 115,                # Makes text 15% wider (FATTER)
+            "scale-y": 115,                # Makes text 15% taller
+            "spacing": 2,                  # Slight letter spacing for readability
             "highlight-position": "last",  # Highlight last word
             "use-ass": True                # Use ASS format
         }
@@ -131,7 +134,7 @@ async def process_caption_task(task_id: UUID, task_data: Dict[str, Any]) -> None
         logger.info(f"[{task_id}] Generating ASS subtitles with custom styling")
         logger.info(f"[{task_id}] Caption settings: {caption_settings}")
         
-        # Generate ASS format with settings (NO BLACK BOX)
+        # Generate ASS format with settings (NO BLACK BOX, FAT & BOLD)
         ass_text = write_ass(
             subtitles=subtitles,
             max_words_per_line=caption_settings["max-words-per-line"],
