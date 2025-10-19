@@ -153,7 +153,10 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
             "y": 960,
             "font-family": "Arial Black",
             "bold": True,
-            "highlight-position": "last"
+            "highlight-position": "last",
+            "scale-x": 100,
+            "scale-y": 100,
+            "spacing": 0
         }
     
     def hex_to_ass_color(hex_color, alpha="00"):
@@ -171,6 +174,9 @@ def write_ass(subtitles, max_words_per_line: int = 3, settings: dict = None) -> 
                 f"font-family={settings.get('font-family')}, "
                 f"outline-width={settings.get('outline-width')}, "
                 f"y={settings.get('y')}, "
+                f"scale-x={settings.get('scale-x', 100)}, "
+                f"scale-y={settings.get('scale-y', 100)}, "
+                f"spacing={settings.get('spacing', 0)}, "
                 f"highlight-position={settings.get('highlight-position')}")
     
     # ASS header - BorderStyle=1 with transparent BackColour
@@ -187,7 +193,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H80000000,{-1 if settings.get('bold') else 0},0,0,0,100,100,0,0,1,{settings.get('outline-width', 3)},0,2,10,10,{margin_from_bottom},1
+Style: Default,{settings.get('font-family', 'Arial Black')},{settings.get('font-size', 32)},{primary_color},&H000000FF,{outline_color},&H00000000,{-1 if settings.get('bold') else 0},0,0,0,{settings.get('scale-x', 100)},{settings.get('scale-y', 100)},{settings.get('spacing', 0)},0,1,{settings.get('outline-width', 3)},{settings.get('shadow-offset', 2)},2,10,10,{margin_from_bottom},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
